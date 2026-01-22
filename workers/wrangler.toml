@@ -1,0 +1,9 @@
+name = "innbox-email-worker"
+main = "email-worker.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+# Use your ngrok URL here (update each time you restart ngrok)
+WEBHOOK_URL = "https://62e676ce68db.ngrok-free.app/api/webhook/email"
+
+# WEBHOOK_SECRET set via wrangler secret

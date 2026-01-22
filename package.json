@@ -4,24 +4,35 @@
   "type": "module",
   "scripts": {
     "build": "react-router build",
-    "dev": "react-router dev",
+    "dev": "bun --bun react-router dev",
     "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
+    "typecheck": "react-router typegen && tsc",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.0",
     "@react-router/node": "7.12.0",
     "@react-router/serve": "7.12.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.1",
     "isbot": "^5.1.31",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-router": "7.12.0"
+    "react-router": "7.12.0",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@react-router/dev": "7.12.0",
     "@tailwindcss/vite": "^4.1.13",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^22",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "drizzle-kit": "^0.31.8",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",

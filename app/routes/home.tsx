@@ -1,5 +1,5 @@
 import type { Route } from "./+types/home";
-import { useLoaderData } from "react-router";
+import { useLoaderData, Link } from "react-router";
 
 /*
  * 🔧 Self-deployable configuration
@@ -77,17 +77,18 @@ export default function Home() {
           One field. One button. One beautiful inbox.
         */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-          <input
-            type="text"
-            placeholder="your-name"
-            className="w-full sm:w-48 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-          />
-          <span className="text-gray-500 dark:text-gray-400 font-medium">
-            @{appDomain}
-          </span>
-          <button className="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-            Create Inbox
-          </button>
+          <Link
+            to="/register"
+            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            Get Started
+          </Link>
+          <Link
+            to="/login"
+            className="px-6 py-3 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors"
+          >
+            Sign In
+          </Link>
         </div>
 
         <p className="text-sm text-gray-500 dark:text-gray-500">
