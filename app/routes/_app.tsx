@@ -1,4 +1,4 @@
-import { Outlet, Link, useLoaderData } from 'react-router';
+import { Outlet, Link, useLoaderData, Form } from 'react-router';
 import type { Route } from './+types/_app';
 import { requireUser } from '../lib/auth.server';
 import { db } from '../lib/db.server';
@@ -81,8 +81,18 @@ export default function AppLayout() {
         </nav>
 
         <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-          <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
-            {user.email}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
+              {user.email}
+            </div>
+            <Form method="post" action="/logout">
+              <button
+                type="submit"
+                className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                Logout
+              </button>
+            </Form>
           </div>
         </div>
       </aside>

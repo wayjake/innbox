@@ -4,6 +4,7 @@ export default [
   index("routes/home.tsx"),
   route("login", "routes/login.tsx"),
   route("register", "routes/register.tsx"),
+  route("logout", "routes/logout.tsx"),
 
   // Authenticated app routes
   layout("routes/_app.tsx", [

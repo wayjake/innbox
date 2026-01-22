@@ -2,6 +2,7 @@
   "name": "innbox",
   "private": true,
   "type": "module",
+  "packageManager": "bun@1.2.4",
   "scripts": {
     "build": "react-router build",
     "dev": "bun --bun react-router dev",
