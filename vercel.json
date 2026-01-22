@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "bunVersion": "1.x",
-  "buildCommand": "bun --bun run build",
-  "installCommand": "bun install"
+  "framework": "react-router"
 }
