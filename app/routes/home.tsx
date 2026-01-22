@@ -1,8 +1,24 @@
 import type { Route } from "./+types/home";
+import { useLoaderData } from "react-router";
 
-export function meta({}: Route.MetaArgs) {
+/*
+ * 🔧 Self-deployable configuration
+ *
+ * These values come from environment variables so you can
+ * rebrand this whole thing as your own. Just set APP_NAME
+ * and APP_DOMAIN in your .env and you're golden.
+ */
+export function loader() {
+  return {
+    appName: process.env.APP_NAME || "innbox",
+    appDomain: process.env.APP_DOMAIN || "innbox.dev",
+  };
+}
+
+export function meta({ data }: Route.MetaArgs) {
+  const { appName } = data || { appName: "innbox" };
   return [
-    { title: "innbox — Instant Email Receiving" },
+    { title: `${appName} — Instant Email Receiving` },
     { name: "description", content: "Get up and running to receive emails in seconds. No setup, no hassle." },
   ];
 }
@@ -20,6 +36,8 @@ export function meta({}: Route.MetaArgs) {
  */
 
 export default function Home() {
+  const { appName, appDomain } = useLoaderData<typeof loader>();
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6">
       <div className="max-w-xl w-full text-center space-y-8">
@@ -47,7 +65,7 @@ export default function Home() {
 
         <div className="space-y-4">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
-            innbox
+            {appName}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
             Receive emails instantly. No setup required.
@@ -65,7 +83,7 @@ export default function Home() {
             className="w-full sm:w-48 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           />
           <span className="text-gray-500 dark:text-gray-400 font-medium">
-            @innbox.dev
+            @{appDomain}
           </span>
           <button className="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
             Create Inbox

@@ -5,11 +5,7 @@
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
-html,
-body {
-  @apply bg-white dark:bg-gray-950;
-
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
-  }
-}
+/*
+ * 🎨 Base styles live on html/body in root.tsx
+ * (Tailwind classes there ensure proper SSR hydration)
+ */
