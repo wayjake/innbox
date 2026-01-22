@@ -1,0 +1,13 @@
+# workers/wrangler.toml
+name = "innbox-email-worker"
+main = "email-worker.ts"
+compatibility_date = "2024-01-01"
+
+# Public configuration
+[vars]
+WEBHOOK_URL = "https://innbox.dev/api/webhook/email"
+
+# WEBHOOK_SECRET should be set via:
+# wrangler secret put WEBHOOK_SECRET
+# 
+# This ensures the secret is encrypted and not in version control
