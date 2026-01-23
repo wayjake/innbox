@@ -1,6 +1,6 @@
 import { redirect } from 'react-router';
 import type { Route } from './+types/_app.inbox.$inboxId._index';
-import { requireUser } from '../lib/auth.server';
+import { requireUser, canAccessInbox } from '../lib/auth.server';
 import { db } from '../lib/db.server';
 import { inboxes, emails } from '../../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
@@ -9,17 +9,23 @@ import { eq, and, desc } from 'drizzle-orm';
  * 📬 Auto-select first unread email when entering an inbox
  *
  * No more staring at empty states — dive right in!
+ * Now with membership-based access for sub-users too.
  */
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const user = await requireUser(request);
   const { inboxId } = params;
 
-  // Verify inbox ownership
+  // Verify inbox access (owner or member)
+  const hasAccess = await canAccessInbox(user.id, inboxId);
+  if (!hasAccess) {
+    throw new Response('Inbox not found', { status: 404 });
+  }
+
   const inbox = await db
     .select()
     .from(inboxes)
-    .where(and(eq(inboxes.id, inboxId), eq(inboxes.userId, user.id)))
+    .where(eq(inboxes.id, inboxId))
     .get();
 
   if (!inbox) {

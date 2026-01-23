@@ -98,9 +98,12 @@ export function subscribe(
  * Like ringing a bell in a quiet room — everyone hears it 🔔
  */
 export function notifyInbox(inboxId: string, event: InboxEvent): void {
+  console.log(`📡 SSE: notifyInbox called for ${inboxId}, ${subscribers.size} inboxes with listeners`);
+
   const inboxSubs = subscribers.get(inboxId);
   if (!inboxSubs || inboxSubs.size === 0) {
-    return; // No one's listening, that's okay
+    console.log(`📡 SSE: No listeners for inbox ${inboxId} — notification dropped`);
+    return;
   }
 
   const message = formatSSE('inbox-event', event);

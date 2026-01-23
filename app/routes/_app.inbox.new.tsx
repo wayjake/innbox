@@ -2,17 +2,26 @@ import { redirect, useActionData, useLoaderData } from 'react-router';
 import type { Route } from './+types/_app.inbox.new';
 import { requireUser } from '../lib/auth.server';
 import { db } from '../lib/db.server';
-import { inboxes } from '../../db/schema';
+import { inboxes, inboxMembers } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 
 /**
  * ✨ Create a new inbox
  *
  * Pick a local part, we'll add @{APP_DOMAIN}
+ *
+ * 🚫 Sub-users need not apply — this is admin-only territory.
+ * They're invited to specific inboxes, not creating their own.
  */
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireUser(request);
+  const user = await requireUser(request);
+
+  // Sub-users can't create new inboxes — redirect them away
+  if (user.userType === 'member') {
+    throw redirect('/inbox');
+  }
+
   const appDomain = process.env.APP_DOMAIN || 'innbox.dev';
   return { appDomain };
 }
@@ -20,6 +29,12 @@ export async function loader({ request }: Route.LoaderArgs) {
 export async function action({ request }: Route.ActionArgs) {
   console.log('📥 Create inbox action called');
   const user = await requireUser(request);
+
+  // Double-check: sub-users can't create inboxes
+  if (user.userType === 'member') {
+    return { error: 'You do not have permission to create inboxes' };
+  }
+
   const formData = await request.formData();
   const localPart = (formData.get('localPart') as string)?.toLowerCase().trim();
   console.log('📥 localPart:', localPart, 'user:', user.id);
@@ -54,6 +69,13 @@ export async function action({ request }: Route.ActionArgs) {
       name: localPart,
     })
     .returning();
+
+  // Add creator as owner in inboxMembers
+  await db.insert(inboxMembers).values({
+    inboxId: inbox.id,
+    userId: user.id,
+    role: 'owner',
+  });
 
   console.log('📥 Inbox created:', inbox.id);
   return redirect(`/inbox/${inbox.id}`);

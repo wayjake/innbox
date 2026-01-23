@@ -7,6 +7,7 @@ export default [
   route("logout", "routes/logout.tsx"),
   route("forgot-password", "routes/forgot-password.tsx"),
   route("reset-password", "routes/reset-password.tsx"),
+  route("accept-invite", "routes/accept-invite.tsx"),
 
   // Authenticated app routes
   layout("routes/_app.tsx", [
@@ -14,6 +15,7 @@ export default [
     route("inbox/new", "routes/_app.inbox.new.tsx"),
     layout("routes/_app.inbox.$inboxId.tsx", [
       route("inbox/:inboxId", "routes/_app.inbox.$inboxId._index.tsx"),
+      route("inbox/:inboxId/settings", "routes/_app.inbox.$inboxId.settings.tsx"),
       route("inbox/:inboxId/thread/:threadId", "routes/_app.inbox.$inboxId.thread.$threadId.tsx"),
       route("inbox/:inboxId/:emailId", "routes/_app.inbox.$inboxId.$emailId.tsx"),
     ]),
@@ -24,6 +26,7 @@ export default [
   route("api/email/send", "routes/api.email.send.ts"),
   route("api/addressbook", "routes/api.addressbook.ts"),
   route("api/sse/inbox", "routes/api.sse.inbox.ts"),
+  route("api/invite", "routes/api.invite.ts"),
 
   route(".well-known/*", "routes/well-known.tsx"),
 ] satisfies RouteConfig;

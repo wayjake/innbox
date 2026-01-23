@@ -39,6 +39,13 @@ export function useInboxSSE({
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fallbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // 🎯 Store callbacks in refs to avoid reconnection loops
+  // (inline functions change identity every render, but refs stay stable)
+  const onNewEmailRef = useRef(onNewEmail);
+  const onThreadUpdateRef = useRef(onThreadUpdate);
+  onNewEmailRef.current = onNewEmail;
+  onThreadUpdateRef.current = onThreadUpdate;
+
   const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
 
   // Clear any pending retry timeout
@@ -96,6 +103,12 @@ export function useInboxSSE({
       setConnectionState('connected');
       retryCountRef.current = 0; // Reset retry count on success
       clearFallbackPolling(); // Stop fallback if we were using it
+
+      // 🔄 Revalidate on connect to catch any missed updates
+      // (especially useful after reconnects or returning to tab)
+      if (revalidator.state === 'idle') {
+        revalidator.revalidate();
+      }
     });
 
     // 📬 New inbox event (email received, thread updated)
@@ -104,11 +117,11 @@ export function useInboxSSE({
         const data: InboxEventPayload = JSON.parse(event.data);
         console.log('📬 SSE: Inbox event received', data.type);
 
-        // Trigger the appropriate callback
+        // Trigger the appropriate callback (via refs to avoid stale closures)
         if (data.type === 'new_email') {
-          onNewEmail?.(data);
+          onNewEmailRef.current?.(data);
         } else if (data.type === 'thread_update') {
-          onThreadUpdate?.(data);
+          onThreadUpdateRef.current?.(data);
         }
 
         // Revalidate to fetch fresh data
@@ -144,8 +157,6 @@ export function useInboxSSE({
     };
   }, [
     inboxId,
-    onNewEmail,
-    onThreadUpdate,
     revalidator,
     clearRetryTimeout,
     clearFallbackPolling,
@@ -173,15 +184,10 @@ export function useInboxSSE({
         console.log('👋 SSE: Tab hidden, disconnecting');
         disconnect();
       } else {
-        // Tab visible — reconnect and refresh
+        // Tab visible — reconnect (revalidation happens on 'connected' event)
         console.log('👀 SSE: Tab visible, reconnecting');
         retryCountRef.current = 0; // Reset retries when user returns
         connect();
-
-        // Immediate revalidation to catch anything we missed
-        if (revalidator.state === 'idle') {
-          revalidator.revalidate();
-        }
       }
     };
 

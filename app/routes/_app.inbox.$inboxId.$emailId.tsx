@@ -1,7 +1,7 @@
 import { useLoaderData, useFetcher } from 'react-router';
 import { useState, useRef, useEffect } from 'react';
 import type { Route } from './+types/_app.inbox.$inboxId.$emailId';
-import { requireUser } from '../lib/auth.server';
+import { requireUser, canAccessInbox } from '../lib/auth.server';
 import { db } from '../lib/db.server';
 import { inboxes, emails } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -17,11 +17,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const user = await requireUser(request);
   const { inboxId, emailId } = params;
 
-  // Verify inbox ownership
+  // Verify inbox access (owner or member)
+  const hasAccess = await canAccessInbox(user.id, inboxId);
+  if (!hasAccess) {
+    throw new Response('Inbox not found', { status: 404 });
+  }
+
   const inbox = await db
     .select()
     .from(inboxes)
-    .where(and(eq(inboxes.id, inboxId), eq(inboxes.userId, user.id)))
+    .where(eq(inboxes.id, inboxId))
     .get();
 
   if (!inbox) {
@@ -59,7 +64,7 @@ function formatDate(dateStr: string | null) {
 
 export default function EmailDetail() {
   const { email, inbox, appDomain } = useLoaderData<typeof loader>();
-  const [showReply, setShowReply] = useState(true); // Auto-open reply
+  const [showReply, setShowReply] = useState(false);
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fetcher = useFetcher();
 

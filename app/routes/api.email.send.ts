@@ -1,5 +1,5 @@
 import type { Route } from './+types/api.email.send';
-import { requireUser } from '../lib/auth.server';
+import { requireUser, canAccessInbox } from '../lib/auth.server';
 import { db } from '../lib/db.server';
 import { inboxes, sentEmails, emails, addressBook, threads } from '../../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
@@ -10,6 +10,7 @@ import { updateThreadStats, createThreadForSentEmail } from '../lib/threading.se
  * 📤 Send Email API
  *
  * Send an email from a user's inbox via Brevo.
+ * Both owners and invited members can send from their inbox.
  */
 
 export async function action({ request }: Route.ActionArgs) {
@@ -29,11 +30,16 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Verify user owns this inbox
+  // Verify user has access to this inbox (owner or member)
+  const hasAccess = await canAccessInbox(user.id, inboxId);
+  if (!hasAccess) {
+    return Response.json({ error: 'Inbox not found' }, { status: 404 });
+  }
+
   const inbox = await db
     .select()
     .from(inboxes)
-    .where(and(eq(inboxes.id, inboxId), eq(inboxes.userId, user.id)))
+    .where(eq(inboxes.id, inboxId))
     .get();
 
   if (!inbox) {

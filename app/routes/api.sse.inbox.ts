@@ -1,8 +1,5 @@
 import type { Route } from './+types/api.sse.inbox';
-import { requireUser } from '../lib/auth.server';
-import { db } from '../lib/db.server';
-import { inboxes } from '../../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { requireUser, canAccessInbox } from '../lib/auth.server';
 import { subscribe } from '../lib/eventBus.server';
 
 /**
@@ -25,6 +22,8 @@ import { subscribe } from '../lib/eventBus.server';
  * Unlike WebSockets, SSE is unidirectional (server → client)
  * and plays nicely with HTTP/2 multiplexing. Plus, EventSource
  * handles reconnection automatically. Win-win! 🎉
+ *
+ * Now supports both owners and invited members!
  */
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -39,14 +38,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     return new Response('Missing inboxId parameter', { status: 400 });
   }
 
-  // 🔒 Verify the user owns this inbox
-  const inbox = await db
-    .select()
-    .from(inboxes)
-    .where(and(eq(inboxes.id, inboxId), eq(inboxes.userId, user.id)))
-    .get();
-
-  if (!inbox) {
+  // 🔒 Verify the user has access to this inbox (owner or member)
+  const hasAccess = await canAccessInbox(user.id, inboxId);
+  if (!hasAccess) {
     return new Response('Inbox not found or access denied', { status: 404 });
   }
 

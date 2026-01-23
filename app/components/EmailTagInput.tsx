@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { cn } from '../utils';
 
 /**
@@ -27,6 +27,7 @@ export function EmailTagInput({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputId = useId(); // Stable unique ID to confuse browser autocomplete
 
   // 🔍 Fetch address book suggestions as user types
   const fetchSuggestions = useCallback(async (query: string) => {
@@ -175,10 +176,11 @@ export function EmailTagInput({
           </span>
         ))}
 
-        {/* Text input */}
+        {/* Text input - using nope + unique name tricks to beat browser autocomplete 🥊 */}
         <input
           ref={inputRef}
           type="text"
+          name={`recipient_search_${inputId}`}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onFocus={() => {
@@ -187,7 +189,13 @@ export function EmailTagInput({
           }}
           onKeyDown={handleKeyDown}
           placeholder={value.length === 0 ? placeholder : ''}
-          autoComplete="off"
+          autoComplete="nope"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-lpignore="true"
+          data-form-type="other"
+          aria-autocomplete="list"
           className={cn(
             'flex-1 min-w-[120px] outline-none',
             'bg-transparent text-gray-900 dark:text-white text-sm',

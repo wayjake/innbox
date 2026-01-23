@@ -12,6 +12,9 @@ export const users = sqliteTable('users', {
   passwordHash: text('password_hash').notNull(),
   name: text('name'),
 
+  // User type: 'admin' = owns inboxes, full access | 'member' = invited to specific inbox(es)
+  userType: text('user_type').default('admin'),
+
   // Push notifications
   pushSubscription: text('push_subscription'), // JSON
 
@@ -64,6 +67,44 @@ export const inboxes = sqliteTable('inboxes', {
 }, (table) => ({
   userIdIdx: index('idx_inboxes_user_id').on(table.userId),
   localPartIdx: index('idx_inboxes_local_part').on(table.localPart),
+}));
+
+// ===========================================
+// INBOX MEMBERS
+// ===========================================
+// 👥 The guest list for each inbox party
+// Owners throw the party, members just enjoy the emails
+
+export const inboxMembers = sqliteTable('inbox_members', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  inboxId: text('inbox_id').notNull().references(() => inboxes.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role').notNull().default('member'), // 'owner' | 'member'
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+}, (table) => ({
+  inboxUserIdx: uniqueIndex('idx_inbox_members_inbox_user').on(table.inboxId, table.userId),
+  inboxIdIdx: index('idx_inbox_members_inbox_id').on(table.inboxId),
+  userIdIdx: index('idx_inbox_members_user_id').on(table.userId),
+}));
+
+// ===========================================
+// INVITATION TOKENS
+// ===========================================
+// 🎟️ Golden tickets to the inbox factory
+// One token = one seat at the table (7-day shelf life)
+
+export const invitationTokens = sqliteTable('invitation_tokens', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  inboxId: text('inbox_id').notNull().references(() => inboxes.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  invitedBy: text('invited_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull(), // SHA-256 hashed for security
+  expiresAt: text('expires_at').notNull(),
+  acceptedAt: text('accepted_at'), // null until accepted
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+}, (table) => ({
+  inboxIdIdx: index('idx_invitation_tokens_inbox_id').on(table.inboxId),
+  emailIdx: index('idx_invitation_tokens_email').on(table.email),
 }));
 
 // ===========================================
@@ -240,3 +281,9 @@ export type NewSentEmail = typeof sentEmails.$inferInsert;
 
 export type AddressBookEntry = typeof addressBook.$inferSelect;
 export type NewAddressBookEntry = typeof addressBook.$inferInsert;
+
+export type InboxMember = typeof inboxMembers.$inferSelect;
+export type NewInboxMember = typeof inboxMembers.$inferInsert;
+
+export type InvitationToken = typeof invitationTokens.$inferSelect;
+export type NewInvitationToken = typeof invitationTokens.$inferInsert;
