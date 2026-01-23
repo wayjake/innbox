@@ -1,5 +1,5 @@
 import { useLoaderData, useFetcher } from 'react-router';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Route } from './+types/_app.inbox.$inboxId.$emailId';
 import { requireUser } from '../lib/auth.server';
 import { db } from '../lib/db.server';
@@ -58,11 +58,21 @@ function formatDate(dateStr: string | null) {
 
 export default function EmailDetail() {
   const { email, inbox, appDomain } = useLoaderData<typeof loader>();
-  const [showReply, setShowReply] = useState(false);
+  const [showReply, setShowReply] = useState(true); // Auto-open reply
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fetcher = useFetcher();
 
   const isSending = fetcher.state === 'submitting';
   const sendResult = fetcher.data as { success?: boolean; error?: string } | undefined;
+
+  // Auto-focus the reply textarea when viewing an email
+  useEffect(() => {
+    if (showReply && replyTextareaRef.current) {
+      // Focus and place cursor at the beginning (before the quoted text)
+      replyTextareaRef.current.focus();
+      replyTextareaRef.current.setSelectionRange(0, 0);
+    }
+  }, [showReply, email.id]);
 
   // Pre-fill reply subject
   const replySubject = email.subject?.startsWith('Re:')
@@ -169,6 +179,7 @@ export default function EmailDetail() {
                 Message
               </label>
               <textarea
+                ref={replyTextareaRef}
                 name="bodyText"
                 rows={8}
                 defaultValue={quotedText}

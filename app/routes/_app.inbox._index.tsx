@@ -1,10 +1,42 @@
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
+import { useEffect } from 'react';
+import type { Route } from './+types/_app.inbox._index';
+import { requireUser } from '../lib/auth.server';
+import { db } from '../lib/db.server';
+import { inboxes } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 
 /**
- * 📥 Inbox index — landing page when no inbox selected
+ * 📥 Inbox index — redirect to last used inbox or show landing
+ *
+ * We remember where you left off — like a good bookmark.
  */
 
-export default function InboxIndex() {
+export async function loader({ request }: Route.LoaderArgs) {
+  const user = await requireUser(request);
+
+  // Get user's inboxes to validate last used
+  const userInboxes = await db
+    .select()
+    .from(inboxes)
+    .where(eq(inboxes.userId, user.id));
+
+  return { inboxIds: userInboxes.map((i) => i.id) };
+}
+
+export default function InboxIndex({ loaderData }: Route.ComponentProps) {
+  const navigate = useNavigate();
+  const { inboxIds } = loaderData;
+
+  useEffect(() => {
+    // Check for last used inbox in localStorage
+    const lastInboxId = localStorage.getItem('innbox_last_inbox');
+
+    if (lastInboxId && inboxIds.includes(lastInboxId)) {
+      navigate(`/inbox/${lastInboxId}`, { replace: true });
+    }
+  }, [inboxIds, navigate]);
+
   return (
     <div className="h-full flex items-center justify-center p-8">
       <div className="text-center max-w-md">

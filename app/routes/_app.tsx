@@ -1,4 +1,5 @@
-import { Outlet, Link, useLoaderData, Form } from 'react-router';
+import { Outlet, Link, NavLink, useLoaderData, useParams, Form } from 'react-router';
+import { useEffect } from 'react';
 import type { Route } from './+types/_app';
 import { requireUser } from '../lib/auth.server';
 import { db } from '../lib/db.server';
@@ -31,6 +32,14 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function AppLayout() {
   const { user, inboxes: userInboxes, appDomain } = useLoaderData<typeof loader>();
+  const params = useParams();
+
+  // Remember last used inbox
+  useEffect(() => {
+    if (params.inboxId) {
+      localStorage.setItem('innbox_last_inbox', params.inboxId);
+    }
+  }, [params.inboxId]);
 
   return (
     <div className="min-h-screen flex bg-white dark:bg-gray-950">
@@ -64,16 +73,31 @@ export default function AppLayout() {
                 </p>
               ) : (
                 userInboxes.map((inbox) => (
-                  <Link
+                  <NavLink
                     key={inbox.id}
                     to={`/inbox/${inbox.id}`}
-                    className="flex items-center px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    className={({ isActive }) =>
+                      `flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                        isActive
+                          ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`
+                    }
                   >
-                    <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    {inbox.localPart}@{appDomain}
-                  </Link>
+                    {({ isActive }) => (
+                      <>
+                        <svg
+                          className={`w-4 h-4 mr-2 ${isActive ? 'text-indigo-500' : 'text-gray-400'}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        {inbox.localPart}@{appDomain}
+                      </>
+                    )}
+                  </NavLink>
                 ))
               )}
             </div>
