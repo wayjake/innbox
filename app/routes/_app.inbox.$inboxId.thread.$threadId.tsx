@@ -1,16 +1,11 @@
 import { useLoaderData, useFetcher, useRevalidator } from 'react-router';
 import { useState, useRef, useEffect } from 'react';
 import type { Route } from './+types/_app.inbox.$inboxId.thread.$threadId';
-import { requireUser } from '../lib/auth.server';
+import { requireUser, canAccessInbox } from '../lib/auth.server';
 import { db } from '../lib/db.server';
 import { inboxes, threads, emails, sentEmails } from '../../db/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { recalculateThreadUnreadCount } from '../lib/threading.server';
-import {
-  stripQuotedText,
-  stripQuotedHtml,
-  getPreviewSnippet,
-} from '../lib/emailBodyParser.server';
 
 /**
  * 🧵 Thread Conversation View
@@ -35,14 +30,25 @@ import {
  */
 
 export async function loader({ request, params }: Route.LoaderArgs) {
+  // 🎭 Dynamic import ensures these functions stay server-only
+  // (top-level imports from .server files can confuse the bundler)
+  const { stripQuotedText, stripQuotedHtml, getPreviewSnippet } = await import(
+    '../lib/emailBodyParser.server'
+  );
+
   const user = await requireUser(request);
   const { inboxId, threadId } = params;
 
-  // Verify inbox ownership
+  // Verify inbox access (owner or member)
+  const hasAccess = await canAccessInbox(user.id, inboxId);
+  if (!hasAccess) {
+    throw new Response('Inbox not found', { status: 404 });
+  }
+
   const inbox = await db
     .select()
     .from(inboxes)
-    .where(and(eq(inboxes.id, inboxId), eq(inboxes.userId, user.id)))
+    .where(eq(inboxes.id, inboxId))
     .get();
 
   if (!inbox) {
@@ -91,6 +97,29 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     await recalculateThreadUnreadCount(threadId);
   }
 
+  // 🕐 Pre-format dates on server to avoid hydration mismatches
+  // (toLocaleString can differ between server/client environments)
+  const formatDateServer = (dateStr: string | null): string => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+
+    if (isToday) {
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    }
+
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
   // Combine and sort messages: newest first ⬇️
   // (so the freshest content is always at the top of the thread)
   // Also pre-compute cleaned content to avoid hydration mismatches 🎭
@@ -110,10 +139,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         cleanText,
         cleanHtml,
         previewSnippet: getPreviewSnippet(e.bodyText),
-        hasQuotedContent:
+        // 🎭 Explicit Boolean() prevents truthy/falsy serialization quirks
+        hasQuotedContent: Boolean(
           (e.bodyText && cleanText !== e.bodyText) ||
-          (e.bodyHtml && cleanHtml !== e.bodyHtml),
+            (e.bodyHtml && cleanHtml !== e.bodyHtml)
+        ),
         timestamp: e.receivedAt,
+        formattedDate: formatDateServer(e.receivedAt),
       };
     }),
     ...sentEmailList.map((e) => {
@@ -132,10 +164,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         cleanText,
         cleanHtml,
         previewSnippet: getPreviewSnippet(e.bodyText),
-        hasQuotedContent:
+        // 🎭 Explicit Boolean() prevents truthy/falsy serialization quirks
+        hasQuotedContent: Boolean(
           (e.bodyText && cleanText !== e.bodyText) ||
-          (e.bodyHtml && cleanHtml !== e.bodyHtml),
+            (e.bodyHtml && cleanHtml !== e.bodyHtml)
+        ),
         timestamp: e.sentAt,
+        formattedDate: formatDateServer(e.sentAt),
       };
     }),
   ].sort((a, b) => {
@@ -157,27 +192,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     appDomain,
     initiallyUnreadIds, // 🔔 Tell the UI which messages were unread on load
   };
-}
-
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-
-  if (isToday) {
-    return date.toLocaleTimeString(undefined, {
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  }
-
-  return date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
 }
 
 export default function ThreadView() {
@@ -445,7 +459,7 @@ export default function ThreadView() {
                         </span>
                       )}
                       <span className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
-                        {formatDate(message.timestamp)}
+                        {message.formattedDate}
                       </span>
                     </div>
                     {/* Show preview only when collapsed */}
