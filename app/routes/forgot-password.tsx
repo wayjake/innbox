@@ -26,10 +26,14 @@ export async function action({ request }: Route.ActionArgs) {
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
     const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
+    // System email sender - configure via env vars for custom deployments
+    const systemEmail = process.env.SYSTEM_EMAIL_ADDRESS || 'hello@innbox.dev';
+    const systemName = process.env.SYSTEM_EMAIL_NAME || 'innbox';
+
     await sendEmail({
       from: {
-        email: process.env.FROM_EMAIL || 'noreply@innbox.dev',
-        name: 'innbox',
+        email: systemEmail,
+        name: systemName,
       },
       to: [{ email: user.email, name: user.name || undefined }],
       subject: 'Reset your innbox password',
