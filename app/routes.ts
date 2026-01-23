@@ -5,6 +5,8 @@ export default [
   route("login", "routes/login.tsx"),
   route("register", "routes/register.tsx"),
   route("logout", "routes/logout.tsx"),
+  route("forgot-password", "routes/forgot-password.tsx"),
+  route("reset-password", "routes/reset-password.tsx"),
 
   // Authenticated app routes
   layout("routes/_app.tsx", [

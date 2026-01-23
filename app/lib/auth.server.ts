@@ -1,12 +1,13 @@
 import { db } from './db.server';
-import { users, sessions } from '../../db/schema';
-import { eq, and, gt } from 'drizzle-orm';
+import { users, sessions, passwordResetTokens } from '../../db/schema';
+import { eq, and, gt, isNull } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
 
 /**
  * 🔐 Authentication utilities
  *
  * Simple session-based auth. No magic, no complexity.
- * Passwords hashed with Bun's built-in argon2.
+ * Passwords hashed with bcrypt (pure JS, works everywhere).
  */
 
 const SESSION_COOKIE = 'innbox_session';
@@ -17,15 +18,11 @@ const SESSION_DURATION_DAYS = 30;
 // ============================================
 
 export async function hashPassword(password: string): Promise<string> {
-  return Bun.password.hash(password, {
-    algorithm: 'argon2id',
-    memoryCost: 19456,
-    timeCost: 2,
-  });
+  return bcrypt.hash(password, 12);
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return Bun.password.verify(password, hash);
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  return bcrypt.compare(password, hashedPassword);
 }
 
 // ============================================
@@ -145,4 +142,85 @@ export async function getUserByEmail(email: string) {
     .from(users)
     .where(eq(users.email, email.toLowerCase()))
     .get();
+}
+
+// ============================================
+// PASSWORD RESET
+// ============================================
+
+const RESET_TOKEN_DURATION_HOURS = 1;
+
+function generateResetToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export async function createPasswordResetToken(userId: string): Promise<string> {
+  const token = generateResetToken();
+  const tokenHash = await hashToken(token);
+  const expiresAt = new Date(
+    Date.now() + RESET_TOKEN_DURATION_HOURS * 60 * 60 * 1000
+  ).toISOString();
+
+  await db.insert(passwordResetTokens).values({
+    userId,
+    tokenHash,
+    expiresAt,
+  });
+
+  return token;
+}
+
+export async function validatePasswordResetToken(token: string) {
+  const tokenHash = await hashToken(token);
+  const now = new Date().toISOString();
+
+  const result = await db
+    .select({
+      token: passwordResetTokens,
+      user: users,
+    })
+    .from(passwordResetTokens)
+    .innerJoin(users, eq(passwordResetTokens.userId, users.id))
+    .where(
+      and(
+        eq(passwordResetTokens.tokenHash, tokenHash),
+        gt(passwordResetTokens.expiresAt, now),
+        isNull(passwordResetTokens.usedAt)
+      )
+    )
+    .get();
+
+  return result;
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<boolean> {
+  const result = await validatePasswordResetToken(token);
+  if (!result) return false;
+
+  const passwordHash = await hashPassword(newPassword);
+
+  await db
+    .update(users)
+    .set({ passwordHash, updatedAt: new Date().toISOString() })
+    .where(eq(users.id, result.user.id));
+
+  await db
+    .update(passwordResetTokens)
+    .set({ usedAt: new Date().toISOString() })
+    .where(eq(passwordResetTokens.id, result.token.id));
+
+  return true;
 }

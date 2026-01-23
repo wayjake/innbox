@@ -8,6 +8,13 @@
       "when": 1769113852796,
       "tag": "0000_stale_maverick",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1769132245653,
+      "tag": "0001_common_secret_warriors",
+      "breakpoints": true
     }
   ]
 }

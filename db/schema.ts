@@ -36,6 +36,21 @@ export const sessions = sqliteTable('sessions', {
 }));
 
 // ===========================================
+// PASSWORD RESET TOKENS
+// ===========================================
+
+export const passwordResetTokens = sqliteTable('password_reset_tokens', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull(), // hashed token for security
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'), // null until used
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+}, (table) => ({
+  userIdIdx: index('idx_password_reset_tokens_user_id').on(table.userId),
+}));
+
+// ===========================================
 // INBOXES
 // ===========================================
 
@@ -146,6 +161,9 @@ export type NewUser = typeof users.$inferInsert;
 
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 
 export type Inbox = typeof inboxes.$inferSelect;
 export type NewInbox = typeof inboxes.$inferInsert;

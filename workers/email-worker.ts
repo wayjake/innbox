@@ -63,7 +63,17 @@ export default {
     if (!response.ok) {
       const text = await response.text();
       console.error(`Webhook failed: ${response.status} - ${text}`);
-      throw new Error(`Webhook failed: ${response.status}`);
+
+      // Only throw (trigger retry) for transient/server errors (5xx)
+      // For client errors (4xx), the email is permanently undeliverable
+      // so we log and accept it to prevent infinite retries
+      if (response.status >= 500) {
+        throw new Error(`Webhook failed: ${response.status}`);
+      }
+
+      // 4xx errors: log but don't throw - email is permanently rejected
+      console.log(`Email permanently rejected: ${message.from} -> ${message.to} (${response.status})`);
+      return;
     }
 
     console.log(`Email processed: ${message.from} -> ${message.to}`);

@@ -1,4 +1,4 @@
-import { Form, redirect, useActionData, Link } from 'react-router';
+import { Form, redirect, useActionData, useSearchParams, Link } from 'react-router';
 import type { Route } from './+types/login';
 import {
   getUserByEmail,
@@ -13,7 +13,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (user) {
     throw redirect('/inbox');
   }
-  return null;
+
+  const url = new URL(request.url);
+  const reset = url.searchParams.get('reset');
+
+  return { reset };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -44,7 +48,7 @@ export async function action({ request }: Route.ActionArgs) {
   });
 }
 
-export default function Login() {
+export default function Login({ loaderData }: Route.ComponentProps) {
   const actionData = useActionData<typeof action>();
 
   return (
@@ -60,6 +64,12 @@ export default function Login() {
         </div>
 
         <Form method="post" className="space-y-4">
+          {loaderData?.reset === 'success' && (
+            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-sm">
+              Password reset successful! You can now sign in.
+            </div>
+          )}
+
           {actionData?.error && (
             <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
               {actionData.error}
@@ -84,12 +94,20 @@ export default function Login() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Password
+              </label>
+              <Link
+                to="/forgot-password"
+                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <input
               id="password"
               name="password"
