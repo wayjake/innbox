@@ -3,7 +3,7 @@ import { requireUser, canAccessInbox } from '../lib/auth.server';
 import { db } from '../lib/db.server';
 import { inboxes, sentEmails, emails, addressBook, threads } from '../../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { sendEmail } from '../lib/brevo.server';
+import { sendEmail } from '../lib/email.server';
 import { updateThreadStats, createThreadForSentEmail } from '../lib/threading.server';
 
 /**

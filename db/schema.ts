@@ -252,6 +252,20 @@ export const addressBook = sqliteTable('address_book', {
 }));
 
 // ===========================================
+// SETTINGS
+// ===========================================
+// ⚙️ Key-value store for app configuration
+// Currently homes SMTP provider settings, but ready
+// to hold any future secrets or toggles
+
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: text('updated_at').default(sql`(datetime('now'))`),
+  updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
+});
+
+// ===========================================
 // TYPE EXPORTS
 // ===========================================
 
@@ -287,3 +301,6 @@ export type NewInboxMember = typeof inboxMembers.$inferInsert;
 
 export type InvitationToken = typeof invitationTokens.$inferSelect;
 export type NewInvitationToken = typeof invitationTokens.$inferInsert;
+
+export type Setting = typeof settings.$inferSelect;
+export type NewSetting = typeof settings.$inferInsert;

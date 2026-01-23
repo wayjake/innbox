@@ -1,7 +1,7 @@
 import { db } from './db.server';
 import { invitationTokens, inboxMembers, inboxes, users } from '../../db/schema';
 import { eq, and, gt, isNull } from 'drizzle-orm';
-import { sendEmail } from './brevo.server';
+import { sendEmail } from './email.server';
 import { hashPassword } from './auth.server';
 
 /**

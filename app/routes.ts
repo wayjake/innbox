@@ -9,6 +9,9 @@ export default [
   route("reset-password", "routes/reset-password.tsx"),
   route("accept-invite", "routes/accept-invite.tsx"),
 
+  // Admin routes
+  route("admin/settings", "routes/admin.settings.tsx"),
+
   // Authenticated app routes
   layout("routes/_app.tsx", [
     route("inbox", "routes/_app.inbox._index.tsx"),
@@ -25,7 +28,6 @@ export default [
   route("api/webhook/email", "routes/api.webhook.email.ts"),
   route("api/email/send", "routes/api.email.send.ts"),
   route("api/addressbook", "routes/api.addressbook.ts"),
-  route("api/sse/inbox", "routes/api.sse.inbox.ts"),
   route("api/invite", "routes/api.invite.ts"),
 
   route(".well-known/*", "routes/well-known.tsx"),

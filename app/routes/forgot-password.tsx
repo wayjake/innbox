@@ -1,7 +1,7 @@
 import { Form, useActionData, useNavigation, Link } from 'react-router';
 import type { Route } from './+types/forgot-password';
 import { getUserByEmail, createPasswordResetToken } from '../lib/auth.server';
-import { sendEmail } from '../lib/brevo.server';
+import { sendEmail } from '../lib/email.server';
 
 /**
  * 🔑 Forgot Password
