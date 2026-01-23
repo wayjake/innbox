@@ -5,6 +5,7 @@ import { requireUser } from '../lib/auth.server';
 import { db } from '../lib/db.server';
 import { inboxes, emails } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
+import { EmailTagInput } from '../components/EmailTagInput';
 
 /**
  * 📨 Email detail view
@@ -62,6 +63,15 @@ export default function EmailDetail() {
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fetcher = useFetcher();
 
+  // Reply-to address (use replyTo if available, otherwise from)
+  const replyTo = email.replyTo || email.fromAddress;
+
+  // 📬 Recipient state - To, Cc, Bcc as arrays of emails
+  const [toEmails, setToEmails] = useState<string[]>([replyTo]);
+  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  const [bccEmails, setBccEmails] = useState<string[]>([]);
+  const [showCcBcc, setShowCcBcc] = useState(false);
+
   const isSending = fetcher.state === 'submitting';
   const sendResult = fetcher.data as { success?: boolean; error?: string } | undefined;
 
@@ -74,13 +84,19 @@ export default function EmailDetail() {
     }
   }, [showReply, email.id]);
 
+  // Reset recipient state when email changes
+  useEffect(() => {
+    const newReplyTo = email.replyTo || email.fromAddress;
+    setToEmails([newReplyTo]);
+    setCcEmails([]);
+    setBccEmails([]);
+    setShowCcBcc(false);
+  }, [email.id, email.replyTo, email.fromAddress]);
+
   // Pre-fill reply subject
   const replySubject = email.subject?.startsWith('Re:')
     ? email.subject
     : `Re: ${email.subject || ''}`;
-
-  // Reply-to address (use replyTo if available, otherwise from)
-  const replyTo = email.replyTo || email.fromAddress;
 
   // Quote the original message
   const quotedText = `\n\n---\nOn ${formatDate(email.receivedAt)}, ${email.fromName || email.fromAddress} wrote:\n\n${email.bodyText || ''}`;
@@ -149,16 +165,55 @@ export default function EmailDetail() {
 
             {/* To */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                To
-              </label>
-              <input
-                type="email"
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  To
+                </label>
+                {!showCcBcc && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCcBcc(true)}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Cc/Bcc
+                  </button>
+                )}
+              </div>
+              <EmailTagInput
                 name="to"
-                defaultValue={replyTo}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                value={toEmails}
+                onChange={setToEmails}
+                placeholder="Add recipients..."
               />
             </div>
+
+            {/* Cc/Bcc fields (conditionally rendered) */}
+            {showCcBcc && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Cc
+                  </label>
+                  <EmailTagInput
+                    name="cc"
+                    value={ccEmails}
+                    onChange={setCcEmails}
+                    placeholder="Add Cc recipients..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Bcc
+                  </label>
+                  <EmailTagInput
+                    name="bcc"
+                    value={bccEmails}
+                    onChange={setBccEmails}
+                    placeholder="Add Bcc recipients..."
+                  />
+                </div>
+              </>
+            )}
 
             {/* Subject */}
             <div>

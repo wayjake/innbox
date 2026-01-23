@@ -14,6 +14,7 @@ export default [
     route("inbox/new", "routes/_app.inbox.new.tsx"),
     layout("routes/_app.inbox.$inboxId.tsx", [
       route("inbox/:inboxId", "routes/_app.inbox.$inboxId._index.tsx"),
+      route("inbox/:inboxId/thread/:threadId", "routes/_app.inbox.$inboxId.thread.$threadId.tsx"),
       route("inbox/:inboxId/:emailId", "routes/_app.inbox.$inboxId.$emailId.tsx"),
     ]),
   ]),
@@ -21,6 +22,7 @@ export default [
   // API routes
   route("api/webhook/email", "routes/api.webhook.email.ts"),
   route("api/email/send", "routes/api.email.send.ts"),
+  route("api/addressbook", "routes/api.addressbook.ts"),
 
   route(".well-known/*", "routes/well-known.tsx"),
 ] satisfies RouteConfig;

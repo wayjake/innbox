@@ -1,5 +1,5 @@
 // db/schema.ts
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 // ===========================================
@@ -67,12 +67,45 @@ export const inboxes = sqliteTable('inboxes', {
 }));
 
 // ===========================================
+// THREADS
+// ===========================================
+// 🧵 Threads group related emails into conversations
+// Gmail-compatible threading uses References/In-Reply-To headers
+// or falls back to normalized subject matching
+
+export const threads = sqliteTable('threads', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  inboxId: text('inbox_id').notNull().references(() => inboxes.id, { onDelete: 'cascade' }),
+
+  // Threading metadata
+  normalizedSubject: text('normalized_subject').notNull(),
+  participants: text('participants'), // JSON array of email addresses
+
+  // Counts (denormalized for fast list queries)
+  messageCount: integer('message_count').default(1),
+  unreadCount: integer('unread_count').default(0),
+
+  // Latest message info (for list preview)
+  latestMessageId: text('latest_message_id'),
+  latestMessageAt: text('latest_message_at'),
+  latestPreview: text('latest_preview'),
+
+  // Timestamps
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+}, (table) => ({
+  inboxIdIdx: index('idx_threads_inbox_id').on(table.inboxId),
+  latestAtIdx: index('idx_threads_latest_at').on(table.latestMessageAt),
+  subjectIdx: index('idx_threads_normalized_subject').on(table.normalizedSubject),
+}));
+
+// ===========================================
 // EMAILS (Received)
 // ===========================================
 
 export const emails = sqliteTable('emails', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   inboxId: text('inbox_id').notNull().references(() => inboxes.id, { onDelete: 'cascade' }),
+  threadId: text('thread_id').references(() => threads.id, { onDelete: 'set null' }),
 
   // Email metadata
   messageId: text('message_id'),
@@ -97,6 +130,7 @@ export const emails = sqliteTable('emails', {
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   inboxIdIdx: index('idx_emails_inbox_id').on(table.inboxId),
+  threadIdIdx: index('idx_emails_thread_id').on(table.threadId),
   receivedAtIdx: index('idx_emails_received_at').on(table.receivedAt),
   fromAddressIdx: index('idx_emails_from_address').on(table.fromAddress),
 }));
@@ -127,9 +161,13 @@ export const attachments = sqliteTable('attachments', {
 export const sentEmails = sqliteTable('sent_emails', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   inboxId: text('inbox_id').notNull().references(() => inboxes.id, { onDelete: 'cascade' }),
+  threadId: text('thread_id').references(() => threads.id, { onDelete: 'set null' }),
 
   // Reply reference (null if new email)
   inReplyToId: text('in_reply_to_id').references(() => emails.id, { onDelete: 'set null' }),
+
+  // Message ID for threading (set by Brevo or generated)
+  messageId: text('message_id'),
 
   // Recipients (JSON arrays)
   toAddresses: text('to_addresses').notNull(),
@@ -149,7 +187,27 @@ export const sentEmails = sqliteTable('sent_emails', {
   sentAt: text('sent_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   inboxIdIdx: index('idx_sent_emails_inbox_id').on(table.inboxId),
+  threadIdIdx: index('idx_sent_emails_thread_id').on(table.threadId),
   sentAtIdx: index('idx_sent_emails_sent_at').on(table.sentAt),
+}));
+
+// ===========================================
+// ADDRESS BOOK
+// ===========================================
+// 📖 Your personal contacts, sorted by how much you email them
+// Every send adds a +1, so frequently-used addresses float to the top
+
+export const addressBook = sqliteTable('address_book', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  name: text('name'),
+  timesUsed: integer('times_used').default(1),
+  lastUsedAt: text('last_used_at').default(sql`(datetime('now'))`),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+}, (table) => ({
+  userEmailIdx: uniqueIndex('idx_address_book_user_email').on(table.userId, table.email),
+  userIdIdx: index('idx_address_book_user_id').on(table.userId),
 }));
 
 // ===========================================
@@ -168,6 +226,9 @@ export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type Inbox = typeof inboxes.$inferSelect;
 export type NewInbox = typeof inboxes.$inferInsert;
 
+export type Thread = typeof threads.$inferSelect;
+export type NewThread = typeof threads.$inferInsert;
+
 export type Email = typeof emails.$inferSelect;
 export type NewEmail = typeof emails.$inferInsert;
 
@@ -176,3 +237,6 @@ export type NewAttachment = typeof attachments.$inferInsert;
 
 export type SentEmail = typeof sentEmails.$inferSelect;
 export type NewSentEmail = typeof sentEmails.$inferInsert;
+
+export type AddressBookEntry = typeof addressBook.$inferSelect;
+export type NewAddressBookEntry = typeof addressBook.$inferInsert;

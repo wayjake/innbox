@@ -2,6 +2,11 @@ import type { Route } from './+types/api.webhook.email';
 import { db } from '../lib/db.server';
 import { inboxes, emails } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import {
+  findThreadForEmail,
+  createThread,
+  updateThreadStats,
+} from '../lib/threading.server';
 
 /**
  * 📬 Email Webhook Endpoint
@@ -91,11 +96,46 @@ export async function action({ request }: Route.ActionArgs) {
     return new Response('Inbox not found', { status: 404 });
   }
 
-  // Store email
+  // 🧵 Threading: Find or create a thread for this email
+  const headers = payload.headers || {};
+  let threadId = await findThreadForEmail(
+    inbox.id,
+    payload.messageId || null,
+    headers,
+    payload.subject || null
+  );
+
+  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const preview = payload.text?.substring(0, 200) || null;
+
+  if (!threadId) {
+    // New conversation — create a fresh thread
+    threadId = await createThread(
+      inbox.id,
+      payload.subject || null,
+      payload.from.address,
+      preview,
+      timestamp
+    );
+    console.log(`🧵 New thread created: ${threadId}`);
+  } else {
+    // Existing conversation — update thread stats
+    await updateThreadStats(threadId, {
+      messageId: payload.messageId,
+      preview,
+      timestamp,
+      fromAddress: payload.from.address,
+      incrementUnread: true,
+    });
+    console.log(`🧵 Added to existing thread: ${threadId}`);
+  }
+
+  // Store email with thread reference
   const [email] = await db
     .insert(emails)
     .values({
       inboxId: inbox.id,
+      threadId,
       messageId: payload.messageId,
       fromAddress: payload.from.address,
       fromName: payload.from.name,

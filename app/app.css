@@ -10,3 +10,41 @@
  * 🎨 Base styles live on html/body in root.tsx
  * (Tailwind classes there ensure proper SSR hydration)
  */
+
+/*
+ * 🍞 Toast slide-up animation
+ * Like bread emerging from a toaster, but smoother
+ */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/*
+ * 📬 Compose modal slide-up animation
+ * The email composer emerges from the depths like a friendly whale
+ */
+@keyframes slide-up-compose {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up-compose {
+  animation: slide-up-compose 0.3s ease-out;
+}

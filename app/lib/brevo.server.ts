@@ -16,6 +16,14 @@ interface SendEmailOptions {
     email: string;
     name?: string;
   }>;
+  cc?: Array<{
+    email: string;
+    name?: string;
+  }>;
+  bcc?: Array<{
+    email: string;
+    name?: string;
+  }>;
   subject: string;
   textContent?: string;
   htmlContent?: string;
@@ -51,6 +59,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       body: JSON.stringify({
         sender: options.from,
         to: options.to,
+        cc: options.cc,
+        bcc: options.bcc,
         subject: options.subject,
         textContent: options.textContent,
         htmlContent: options.htmlContent,
