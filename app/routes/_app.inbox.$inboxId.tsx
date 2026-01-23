@@ -4,7 +4,7 @@ import { requireUser } from '../lib/auth.server';
 import { db } from '../lib/db.server';
 import { inboxes, threads, emails } from '../../db/schema';
 import { eq, and, desc, isNull } from 'drizzle-orm';
-import { useThreadPolling } from '../hooks/useThreadPolling';
+import { useInboxSSE } from '../hooks/useInboxSSE';
 import { useToast } from '../context/ToastContext';
 
 /**
@@ -73,12 +73,17 @@ export default function InboxView() {
   const { inbox, threads: threadList, orphanEmails, appDomain } = useLoaderData<typeof loader>();
   const { showToast } = useToast();
 
-  // 🔄 Poll for thread updates every 5 seconds
-  const { isPolling } = useThreadPolling({
-    threads: threadList,
-    onNewThread: (thread) => {
-      showToast('New conversation', {
-        description: thread.latestPreview || '(no preview)',
+  // 📡 Real-time updates via SSE — no more polling tax!
+  const { isConnected, isReconnecting, isPolling } = useInboxSSE({
+    inboxId: inbox.id,
+    onNewEmail: (event) => {
+      showToast('New email', {
+        description: event.preview || event.subject || '(no preview)',
+      });
+    },
+    onThreadUpdate: (event) => {
+      showToast('Thread updated', {
+        description: event.preview || '(new message)',
       });
     },
   });
@@ -95,10 +100,27 @@ export default function InboxView() {
             <h2 className="font-semibold text-gray-900 dark:text-white">
               {inbox.localPart}@{appDomain}
             </h2>
-            {/* Tiny pulse when polling — like a heartbeat 💓 */}
-            {isPolling && (
-              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-            )}
+            {/* Connection status indicator — green=live, yellow=reconnecting, blue=polling 🚦 */}
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isConnected
+                  ? 'bg-green-500'
+                  : isReconnecting
+                  ? 'bg-yellow-500 animate-pulse'
+                  : isPolling
+                  ? 'bg-blue-500 animate-pulse'
+                  : 'bg-gray-400'
+              }`}
+              title={
+                isConnected
+                  ? 'Connected (real-time)'
+                  : isReconnecting
+                  ? 'Reconnecting...'
+                  : isPolling
+                  ? 'Fallback polling'
+                  : 'Disconnected'
+              }
+            />
           </div>
           <p className="text-sm text-gray-500">
             {totalCount} {totalCount === 1 ? 'conversation' : 'conversations'}

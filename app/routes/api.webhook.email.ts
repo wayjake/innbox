@@ -7,6 +7,7 @@ import {
   createThread,
   updateThreadStats,
 } from '../lib/threading.server';
+import { notifyInbox } from '../lib/eventBus.server';
 
 /**
  * 📬 Email Webhook Endpoint
@@ -107,6 +108,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
   const preview = payload.text?.substring(0, 200) || null;
+  let isNewThread = false;
 
   if (!threadId) {
     // New conversation — create a fresh thread
@@ -117,6 +119,7 @@ export async function action({ request }: Route.ActionArgs) {
       preview,
       timestamp
     );
+    isNewThread = true;
     console.log(`🧵 New thread created: ${threadId}`);
   } else {
     // Existing conversation — update thread stats
@@ -151,6 +154,17 @@ export async function action({ request }: Route.ActionArgs) {
     .returning();
 
   console.log(`Email stored: ${email.id} (${payload.from.address} -> ${localPart}@${appDomain})`);
+
+  // 📡 Notify connected SSE clients — the inbox just got mail!
+  notifyInbox(inbox.id, {
+    type: isNewThread ? 'new_email' : 'thread_update',
+    threadId,
+    emailId: email.id,
+    preview,
+    fromAddress: payload.from.address,
+    subject: payload.subject || null,
+    timestamp,
+  });
 
   // TODO: Handle attachments with UploadThing
   // TODO: Send push notification

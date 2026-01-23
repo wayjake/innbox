@@ -23,6 +23,7 @@ export default [
   route("api/webhook/email", "routes/api.webhook.email.ts"),
   route("api/email/send", "routes/api.email.send.ts"),
   route("api/addressbook", "routes/api.addressbook.ts"),
+  route("api/sse/inbox", "routes/api.sse.inbox.ts"),
 
   route(".well-known/*", "routes/well-known.tsx"),
 ] satisfies RouteConfig;
