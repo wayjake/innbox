@@ -1,6 +1,6 @@
 import { db } from './db.server';
-import { users, sessions, passwordResetTokens } from '../../db/schema';
-import { eq, and, gt, isNull } from 'drizzle-orm';
+import { users, sessions, passwordResetTokens, inboxMembers, inboxes } from '../../db/schema';
+import { eq, and, gt, isNull, or } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
 /**
@@ -223,4 +223,86 @@ export async function resetPassword(token: string, newPassword: string): Promise
     .where(eq(passwordResetTokens.id, result.token.id));
 
   return true;
+}
+
+// ============================================
+// INBOX ACCESS CONTROL
+// ============================================
+// 🚪 The velvet rope of inbox access
+// Either you're on the list (inboxMembers) or you own the place
+
+/**
+ * Check if a user can access a specific inbox.
+ * Access granted if user is:
+ * 1. The inbox owner (legacy: inboxes.userId match), OR
+ * 2. A member via inboxMembers table (new system)
+ */
+export async function canAccessInbox(userId: string, inboxId: string): Promise<boolean> {
+  // Check membership first (includes owners added via migration)
+  const membership = await db
+    .select()
+    .from(inboxMembers)
+    .where(
+      and(
+        eq(inboxMembers.inboxId, inboxId),
+        eq(inboxMembers.userId, userId)
+      )
+    )
+    .get();
+
+  if (membership) return true;
+
+  // Fallback: check legacy ownership (inboxes.userId)
+  // This handles edge cases during migration
+  const inbox = await db
+    .select()
+    .from(inboxes)
+    .where(
+      and(
+        eq(inboxes.id, inboxId),
+        eq(inboxes.userId, userId)
+      )
+    )
+    .get();
+
+  return !!inbox;
+}
+
+/**
+ * Check if user is the owner of an inbox (not just a member)
+ */
+export async function isInboxOwner(userId: string, inboxId: string): Promise<boolean> {
+  const membership = await db
+    .select()
+    .from(inboxMembers)
+    .where(
+      and(
+        eq(inboxMembers.inboxId, inboxId),
+        eq(inboxMembers.userId, userId),
+        eq(inboxMembers.role, 'owner')
+      )
+    )
+    .get();
+
+  return !!membership;
+}
+
+/**
+ * Get all inboxes a user can access (owned or member)
+ */
+export async function getUserAccessibleInboxes(userId: string) {
+  // Get all inboxes where user is a member
+  const memberInboxes = await db
+    .select({
+      inbox: inboxes,
+      membership: inboxMembers,
+    })
+    .from(inboxMembers)
+    .innerJoin(inboxes, eq(inboxMembers.inboxId, inboxes.id))
+    .where(eq(inboxMembers.userId, userId));
+
+  return memberInboxes.map(({ inbox, membership }) => ({
+    ...inbox,
+    role: membership.role,
+  }));
 }
