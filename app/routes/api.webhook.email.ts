@@ -7,7 +7,6 @@ import {
   createThread,
   updateThreadStats,
 } from '../lib/threading.server';
-import { notifyInbox } from '../lib/eventBus.server';
 
 /**
  * 📬 Email Webhook Endpoint
@@ -154,17 +153,6 @@ export async function action({ request }: Route.ActionArgs) {
     .returning();
 
   console.log(`Email stored: ${email.id} (${payload.from.address} -> ${localPart}@${appDomain})`);
-
-  // 📡 Notify connected SSE clients — the inbox just got mail!
-  notifyInbox(inbox.id, {
-    type: isNewThread ? 'new_email' : 'thread_update',
-    threadId,
-    emailId: email.id,
-    preview,
-    fromAddress: payload.from.address,
-    subject: payload.subject || null,
-    timestamp,
-  });
 
   // TODO: Handle attachments with UploadThing
   // TODO: Send push notification

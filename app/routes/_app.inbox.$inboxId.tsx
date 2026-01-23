@@ -4,8 +4,7 @@ import { requireUser, canAccessInbox, isInboxOwner } from '../lib/auth.server';
 import { db } from '../lib/db.server';
 import { inboxes, threads, emails } from '../../db/schema';
 import { eq, and, desc, isNull } from 'drizzle-orm';
-import { useInboxSSE } from '../hooks/useInboxSSE';
-import { useToast } from '../context/ToastContext';
+import { useInboxPolling } from '../hooks/useInboxPolling';
 
 /**
  * 📧 Inbox view — threaded conversation list
@@ -84,21 +83,10 @@ function formatTime(dateStr: string | null) {
 
 export default function InboxView() {
   const { inbox, threads: threadList, orphanEmails, appDomain, isOwner } = useLoaderData<typeof loader>();
-  const { showToast } = useToast();
 
-  // 📡 Real-time updates via SSE — no more polling tax!
-  const { isConnected, isReconnecting, isPolling } = useInboxSSE({
+  // 🔄 Keep inbox fresh with polling (every 5s)
+  const { isPolling } = useInboxPolling({
     inboxId: inbox.id,
-    onNewEmail: (event) => {
-      showToast('New email', {
-        description: event.preview || event.subject || '(no preview)',
-      });
-    },
-    onThreadUpdate: (event) => {
-      showToast('Thread updated', {
-        description: event.preview || '(new message)',
-      });
-    },
   });
 
   // Total count includes both threads and orphan emails
@@ -114,26 +102,12 @@ export default function InboxView() {
               <h2 className="font-semibold text-gray-900 dark:text-white">
                 {inbox.localPart}@{appDomain}
               </h2>
-              {/* Connection status indicator — green=live, yellow=reconnecting, blue=polling 🚦 */}
+              {/* Status indicator — green when actively polling 🚦 */}
               <span
                 className={`w-2 h-2 rounded-full ${
-                  isConnected
-                    ? 'bg-green-500'
-                    : isReconnecting
-                    ? 'bg-yellow-500 animate-pulse'
-                    : isPolling
-                    ? 'bg-blue-500 animate-pulse'
-                    : 'bg-gray-400'
+                  isPolling ? 'bg-green-500' : 'bg-gray-400'
                 }`}
-                title={
-                  isConnected
-                    ? 'Connected (real-time)'
-                    : isReconnecting
-                    ? 'Reconnecting...'
-                    : isPolling
-                    ? 'Fallback polling'
-                    : 'Disconnected'
-                }
+                title={isPolling ? 'Auto-refresh active' : 'Paused'}
               />
             </div>
             {/* Settings link for owners */}
